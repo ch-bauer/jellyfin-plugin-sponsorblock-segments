@@ -13,7 +13,7 @@
         "changelog": "Adds a segment preview to the configuration page and a scheduled task of the plugin's own. The preview shows what a scan would store for one episode - each marked range, the category it was read as, the segment type it maps to and which source it came from - and works whether or not the item has been opted in, so a mapping can be checked before committing to a scan. The task scans only what is in scope rather than walking every library, and goes through the server's provider pipeline so each library's own provider settings still decide what runs and in what order. It has no default trigger; add one from Dashboard - Scheduled Tasks if it should run on a schedule.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/ch-bauer/jellyfin-plugin-sponsorblock-segments/releases/download/v1.1.0.0/sponsorblock-segments_1.1.0.0.zip",
-        "checksum": "PENDING",
+        "checksum": "109fc57ea1463c237bab0ee073612034",
         "timestamp": "2026-08-18T23:45:00.000Z"
       },
       {
