@@ -1,0 +1,15 @@
+{
+  "category": "General",
+  "changelog": "First release. Reads the [SponsorBlock] chapters yt-dlp embeds and turns every one of them into a Jellyfin media segment, falling back to the SponsorBlock API for files that carry none. Categories are matched on the whole chapter label rather than by substring, which is what stops a Preview/Recap chapter being filed as an advert - every one of these chapters is prefixed \"[SponsorBlock]:\", so a pattern written to catch sponsors matches all of them. Each of the ten categories maps to a segment type of your choosing, or to nothing at all, and scanning is an allowlist: until a library, series or season is opted in, the plugin produces no segments anywhere.",
+  "description": "Turns SponsorBlock data into Jellyfin media segments, so sponsors, intros, recaps and self-promotion get a skip button. Reads the [SponsorBlock] chapters yt-dlp embeds and falls back to the SponsorBlock API for files without them. Every segment in a file is emitted, each category maps to a segment type you choose, and nothing is scanned until you opt a library, series or season in.",
+  "guid": "684a50b4-3970-44ef-aab0-3a162b415374",
+  "imageUrl": "https://raw.githubusercontent.com/ch-bauer/jellyfin-plugin-sponsorblock-segments/main/images/icon.png",
+  "name": "SponsorBlock Segments",
+  "overview": "Skip buttons for sponsors, intros and recaps in a YouTube library, from the SponsorBlock data already in your files.",
+  "owner": "Christian",
+  "targetAbi": "10.11.0.0",
+  "timestamp": "2026-08-18T23:00:00.000Z",
+  "version": "1.0.0.0",
+  "status": "Active",
+  "autoUpdate": false
+}

@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SponsorBlock Segments</title>
+</head>
+<body>
+<div id="SponsorBlockSegmentsConfigPage"
+     data-role="page"
+     class="page type-interior pluginConfigurationPage"
+     data-require="emby-input,emby-button,emby-checkbox,emby-select">
+
+    <div data-role="content">
+        <div class="content-primary">
+            <form id="SponsorBlockSegmentsConfigForm">
+                <h2>SponsorBlock Segments</h2>
+                <p style="opacity:0.8;">
+                    Turns SponsorBlock data into Jellyfin media segments, so sponsors, intros,
+                    recaps and self-promotion get a skip button. It reads the
+                    <code>[SponsorBlock]:</code> chapters yt-dlp embeds, and can fall back to the
+                    SponsorBlock API for files that have none.
+                    <br /><br />
+                    Every segment in a file is emitted &mdash; a video with seven sponsor reads
+                    produces seven segments. To have these used ahead of another provider, order
+                    or disable providers per library under
+                    <em>Libraries &rarr; (library) &rarr; Media Segment Providers</em>.
+                </p>
+
+                <div class="checkboxContainer checkboxContainer-withDescription">
+                    <label>
+                        <input is="emby-checkbox" type="checkbox" id="Enabled" />
+                        <span>Enable</span>
+                    </label>
+                    <div class="fieldDescription checkboxFieldDescription">
+                        When off, the provider reports that it supports nothing. Segments already
+                        stored stay where they are until the next scan.
+                    </div>
+                </div>
+
+                <div class="selectContainer">
+                    <label class="selectLabel" for="SourceMode">Where segments come from</label>
+                    <select is="emby-select" id="SourceMode" class="emby-select-withcolor emby-select">
+                        <option value="ChaptersThenApi">Embedded chapters, API as fallback</option>
+                        <option value="ChaptersOnly">Embedded chapters only</option>
+                        <option value="ApiOnly">SponsorBlock API only</option>
+                    </select>
+                    <div class="fieldDescription">
+                        Chapters need no network and are exactly what was embedded at download
+                        time. The API is always current and returns precise start and end times,
+                        but needs a YouTube video id in the filename.
+                    </div>
+                </div>
+
+                <h3 style="margin-top:2em;">What gets scanned</h3>
+                <div class="fieldDescription" style="margin-bottom:1em;">
+                    An allowlist. With nothing selected this plugin produces no segments at all,
+                    so it cannot put SponsorBlock segments on ordinary television by accident.
+                    Selecting a series covers every season; select individual seasons to narrow it.
+                </div>
+
+                <div id="ScopeList" style="margin-bottom:1em;"></div>
+
+                <div class="selectContainer">
+                    <label class="selectLabel" for="LibraryPicker">Library</label>
+                    <select is="emby-select" id="LibraryPicker" class="emby-select-withcolor emby-select"></select>
+                </div>
+                <div class="selectContainer">
+                    <label class="selectLabel" for="SeriesPicker">Series</label>
+                    <select is="emby-select" id="SeriesPicker" class="emby-select-withcolor emby-select"></select>
+                </div>
+                <div class="selectContainer">
+                    <label class="selectLabel" for="SeasonPicker">Season</label>
+                    <select is="emby-select" id="SeasonPicker" class="emby-select-withcolor emby-select"></select>
+                </div>
+
+                <div style="margin-bottom:1.5em;">
+                    <button is="emby-button" type="button" class="raised" id="AddLibrary"><span>Add library</span></button>
+                    <button is="emby-button" type="button" class="raised" id="AddSeries"><span>Add series</span></button>
+                    <button is="emby-button" type="button" class="raised" id="AddSeason"><span>Add season</span></button>
+                </div>
+
+                <h3 style="margin-top:2em;">Category mapping</h3>
+                <div class="fieldDescription" style="margin-bottom:1em;">
+                    What each SponsorBlock category becomes. Jellyfin has five segment types, so
+                    several categories share one; <em>Ignore</em> produces no segment and leaves
+                    the chapter alone.
+                </div>
+                <div id="MappingTable"></div>
+
+                <div class="selectContainer" style="margin-top:1em;">
+                    <label class="selectLabel" for="DefaultAction">Categories not listed above</label>
+                    <select is="emby-select" id="DefaultAction" class="emby-select-withcolor emby-select"></select>
+                </div>
+
+                <h3 style="margin-top:2em;">Advanced</h3>
+
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="VideoIdPattern">Video id pattern</label>
+                    <input is="emby-input" type="text" id="VideoIdPattern" />
+                    <div class="fieldDescription">
+                        Finds the YouTube id in a filename for the API source. The first capturing
+                        group is the id. The default matches yt-dlp's
+                        <code>&hellip; [dQw4w9WgXcQ].mkv</code>.
+                    </div>
+                </div>
+
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="MinimumSegmentSeconds">Ignore segments shorter than (seconds)</label>
+                    <input is="emby-input" type="number" id="MinimumSegmentSeconds" min="0" max="60" step="0.5" />
+                    <div class="fieldDescription">
+                        Stops a stray one-frame submission becoming a skip button. 0 disables the check.
+                    </div>
+                </div>
+
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="ApiBaseUrl">API address</label>
+                    <input is="emby-input" type="text" id="ApiBaseUrl" />
+                </div>
+
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="ApiCacheHours">Cache answers for (hours)</label>
+                    <input is="emby-input" type="number" id="ApiCacheHours" min="0" max="8760" />
+                </div>
+
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="ApiNegativeCacheHours">Remember "no segments" for (hours)</label>
+                    <input is="emby-input" type="number" id="ApiNegativeCacheHours" min="0" max="8760" />
+                    <div class="fieldDescription">
+                        Kept longer than a normal answer on purpose: in a YouTube library a large
+                        minority of videos have nothing submitted, and without this every scan asks
+                        about all of them again.
+                    </div>
+                </div>
+
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="ApiTimeoutSeconds">API timeout (seconds)</label>
+                    <input is="emby-input" type="number" id="ApiTimeoutSeconds" min="1" max="120" />
+                </div>
+
+                <div class="checkboxContainer checkboxContainer-withDescription">
+                    <label>
+                        <input is="emby-checkbox" type="checkbox" id="SkipOverlappingExisting" />
+                        <span>Skip segments that overlap another provider's</span>
+                    </label>
+                    <div class="fieldDescription checkboxFieldDescription">
+                        Only useful when running alongside another segment provider rather than
+                        instead of it. Segments are stored per provider, so both sets otherwise
+                        coexist.
+                    </div>
+                </div>
+
+                <div style="margin-top:1.5em;">
+                    <button is="emby-button" type="submit" class="raised button-submit block"><span>Save</span></button>
+                    <button is="emby-button" type="button" class="raised" id="ClearCache"><span>Clear API cache</span></button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        (function () {
+            var pluginId = '684a50b4-3970-44ef-aab0-3a162b415374';
+
+            var categories = [
+                ['Sponsor', 'Sponsor — paid promotion'],
+                ['SelfPromo', 'Unpaid/Self Promotion'],
+                ['Interaction', 'Interaction Reminder — like &amp; subscribe'],
+                ['Intro', 'Intermission/Intro Animation'],
+                ['Hook', 'Hook/Greetings'],
+                ['Outro', 'Endcards/Credits'],
+                ['Preview', 'Preview/Recap'],
+                ['Filler', 'Filler Tangent'],
+                ['MusicOffTopic', 'Non-Music Section'],
+                ['PoiHighlight', 'Highlight']
+            ];
+            var actions = ['Ignore', 'Commercial', 'Intro', 'Outro', 'Preview', 'Recap', 'Unknown'];
+
+            function view() {
+                return document.querySelector('#SponsorBlockSegmentsConfigPage');
+            }
+
+            function actionSelect(id, value) {
+                var html = '<select is="emby-select" id="' + id + '" class="emby-select-withcolor emby-select">';
+                actions.forEach(function (a) {
+                    html += '<option value="' + a + '"' + (a === value ? ' selected' : '') + '>' + a + '</option>';
+                });
+                return html + '</select>';
+            }
+
+            function renderMappings(config) {
+                var byCategory = {};
+                (config.Mappings || []).forEach(function (m) { byCategory[m.Category] = m.Action; });
+
+                var html = '';
+                categories.forEach(function (c) {
+                    html += '<div class="selectContainer" style="display:flex;align-items:center;gap:1em;">'
+                        + '<label class="selectLabel" style="flex:1;margin:0;">' + c[1] + '</label>'
+                        + '<div style="flex:0 0 12em;">' + actionSelect('Map_' + c[0], byCategory[c[0]] || 'Ignore') + '</div>'
+                        + '</div>';
+                });
+                view().querySelector('#MappingTable').innerHTML = html;
+
+                var def = view().querySelector('#DefaultAction');
+                def.innerHTML = actions.map(function (a) {
+                    return '<option value="' + a + '">' + a + '</option>';
+                }).join('');
+                def.value = config.DefaultAction || 'Ignore';
+            }
+
+            function renderScope(config) {
+                var list = view().querySelector('#ScopeList');
+                if (!config.Scope || !config.Scope.length) {
+                    list.innerHTML = '<div class="fieldDescription"><em>Nothing selected &mdash; no segments will be produced.</em></div>';
+                    return;
+                }
+                var html = '<div class="paperList">';
+                config.Scope.forEach(function (e) {
+                    var label = (e.Name || e.ItemId) + (e.ParentName ? ' — ' + e.ParentName : '');
+                    html += '<div class="listItem" style="display:flex;align-items:center;gap:1em;padding:0.4em 0;">'
+                        + '<span style="flex:0 0 5em;opacity:0.7;">' + e.Kind + '</span>'
+                        + '<span style="flex:1;">' + label + '</span>'
+                        + '<button is="emby-button" type="button" class="raised remove-scope" data-id="' + e.ItemId + '"><span>Remove</span></button>'
+                        + '</div>';
+                });
+                list.innerHTML = html + '</div>';
+
+                list.querySelectorAll('.remove-scope').forEach(function (b) {
+                    b.addEventListener('click', function () {
+                        api('Scope?itemId=' + b.getAttribute('data-id'), 'DELETE').then(load);
+                    });
+                });
+            }
+
+            function api(path, method) {
+                return ApiClient.ajax({
+                    type: method || 'GET',
+                    url: ApiClient.getUrl('SponsorBlockSegments/' + path),
+                    dataType: method && method !== 'GET' ? undefined : 'json'
+                });
+            }
+
+            function fill(select, nodes, placeholder) {
+                select.innerHTML = '<option value="">' + placeholder + '</option>'
+                    + nodes.map(function (n) {
+                        return '<option value="' + n.Id + '">' + n.Name + (n.Selected ? ' ✓' : '') + '</option>';
+                    }).join('');
+            }
+
+            function loadLibraries() {
+                return api('Libraries').then(function (nodes) {
+                    fill(view().querySelector('#LibraryPicker'), nodes, '— pick a library —');
+                });
+            }
+
+            function load() {
+                ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                    var v = view();
+                    v.querySelector('#Enabled').checked = config.Enabled;
+                    v.querySelector('#SourceMode').value = config.SourceMode;
+                    v.querySelector('#VideoIdPattern').value = config.VideoIdPattern || '';
+                    v.querySelector('#ApiBaseUrl').value = config.ApiBaseUrl || '';
+                    v.querySelector('#ApiCacheHours').value = config.ApiCacheHours;
+                    v.querySelector('#ApiNegativeCacheHours').value = config.ApiNegativeCacheHours;
+                    v.querySelector('#ApiTimeoutSeconds').value = config.ApiTimeoutSeconds;
+                    v.querySelector('#MinimumSegmentSeconds').value = config.MinimumSegmentSeconds;
+                    v.querySelector('#SkipOverlappingExisting').checked = config.SkipOverlappingExisting;
+                    renderMappings(config);
+                    renderScope(config);
+                    loadLibraries();
+                });
+            }
+
+            function save(e) {
+                e.preventDefault();
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                    var v = view();
+                    config.Enabled = v.querySelector('#Enabled').checked;
+                    config.SourceMode = v.querySelector('#SourceMode').value;
+                    config.VideoIdPattern = v.querySelector('#VideoIdPattern').value;
+                    config.ApiBaseUrl = v.querySelector('#ApiBaseUrl').value;
+                    config.ApiCacheHours = parseInt(v.querySelector('#ApiCacheHours').value, 10);
+                    config.ApiNegativeCacheHours = parseInt(v.querySelector('#ApiNegativeCacheHours').value, 10);
+                    config.ApiTimeoutSeconds = parseInt(v.querySelector('#ApiTimeoutSeconds').value, 10);
+                    config.MinimumSegmentSeconds = parseFloat(v.querySelector('#MinimumSegmentSeconds').value);
+                    config.SkipOverlappingExisting = v.querySelector('#SkipOverlappingExisting').checked;
+                    config.DefaultAction = v.querySelector('#DefaultAction').value;
+                    config.Mappings = categories.map(function (c) {
+                        return { Category: c[0], Action: v.querySelector('#Map_' + c[0]).value };
+                    });
+
+                    ApiClient.updatePluginConfiguration(pluginId, config).then(function (result) {
+                        Dashboard.processPluginConfigurationUpdateResult(result);
+                    });
+                });
+                return false;
+            }
+
+            document.querySelector('#SponsorBlockSegmentsConfigPage')
+                .addEventListener('pageshow', function () {
+                    load();
+
+                    var v = view();
+
+                    v.querySelector('#LibraryPicker').addEventListener('change', function () {
+                        var id = this.value;
+                        if (!id) { return; }
+                        api('Series?libraryId=' + id).then(function (nodes) {
+                            fill(v.querySelector('#SeriesPicker'), nodes, '— pick a series —');
+                            v.querySelector('#SeasonPicker').innerHTML = '';
+                        });
+                    });
+
+                    v.querySelector('#SeriesPicker').addEventListener('change', function () {
+                        var id = this.value;
+                        if (!id) { return; }
+                        api('Seasons?seriesId=' + id).then(function (nodes) {
+                            fill(v.querySelector('#SeasonPicker'), nodes, '— pick a season —');
+                        });
+                    });
+
+                    function add(pickerId, kind) {
+                        var id = v.querySelector(pickerId).value;
+                        if (!id) { return; }
+                        api('Scope?itemId=' + id + '&kind=' + kind, 'POST').then(load);
+                    }
+
+                    v.querySelector('#AddLibrary').addEventListener('click', function () { add('#LibraryPicker', 'Library'); });
+                    v.querySelector('#AddSeries').addEventListener('click', function () { add('#SeriesPicker', 'Series'); });
+                    v.querySelector('#AddSeason').addEventListener('click', function () { add('#SeasonPicker', 'Season'); });
+
+                    v.querySelector('#ClearCache').addEventListener('click', function () {
+                        api('ClearCache', 'POST').then(function () {
+                            Dashboard.alert('API cache cleared.');
+                        });
+                    });
+                });
+
+            document.querySelector('#SponsorBlockSegmentsConfigForm')
+                .addEventListener('submit', save);
+        })();
+    </script>
+</div>
+</body>
+</html>
