@@ -46,7 +46,7 @@ public sealed class VideoIdExtractor
         Match match;
         try
         {
-            match = regex.Match(Path.GetFileName(path));
+            match = regex.Match(FileName(path));
         }
         catch (RegexMatchTimeoutException)
         {
@@ -71,6 +71,21 @@ public sealed class VideoIdExtractor
 
         videoId = value;
         return true;
+    }
+
+    /// <summary>
+    /// The last path component, splitting on both separators regardless of host.
+    /// </summary>
+    /// <remarks>
+    /// Not <see cref="Path.GetFileName(string)"/>: that honours only the running
+    /// platform's separator, so on Linux - where most servers run - a Windows-style path
+    /// is treated as one long file name, and a bracketed string anywhere in a parent
+    /// directory would be read as the video id.
+    /// </remarks>
+    internal static string FileName(string path)
+    {
+        var cut = path.LastIndexOfAny(new[] { '/', '\\' });
+        return cut < 0 ? path : path[(cut + 1)..];
     }
 
     private Regex? Compile(string pattern)

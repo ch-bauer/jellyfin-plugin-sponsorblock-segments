@@ -37,12 +37,31 @@ public class VideoIdExtractorTests
     /// The id is looked for in the file name, not the whole path, so a folder that happens
     /// to contain a bracketed 11-character string cannot win.
     /// </summary>
-    [Fact]
-    public void Only_the_file_name_is_searched()
+    /// <remarks>
+    /// Both separators are checked on every platform. Path.GetFileName honours only the
+    /// running platform's separator, so this passed on Windows and failed on Linux - where
+    /// most servers run - until the split was made platform-independent.
+    /// </remarks>
+    [Theory]
+    [InlineData(@"C:\Media\[aaaaaaaaaaa]\Show S01E01.mkv")]
+    [InlineData("/media/[aaaaaaaaaaa]/Show S01E01.mkv")]
+    public void Only_the_file_name_is_searched(string path)
     {
         var extractor = new VideoIdExtractor();
-        Assert.False(extractor.TryExtract(
-            @"C:\Media\[aaaaaaaaaaa]\Show S01E01.mkv", Default, out _));
+        Assert.False(extractor.TryExtract(path, Default, out _));
+    }
+
+    /// <summary>
+    /// The same path must resolve identically whichever separator it uses.
+    /// </summary>
+    [Theory]
+    [InlineData(@"C:\Media\Show\Show S01E01 [dQw4w9WgXcQ].mkv")]
+    [InlineData("/media/Show/Show S01E01 [dQw4w9WgXcQ].mkv")]
+    public void Both_separators_behave_the_same(string path)
+    {
+        var extractor = new VideoIdExtractor();
+        Assert.True(extractor.TryExtract(path, Default, out var id));
+        Assert.Equal("dQw4w9WgXcQ", id);
     }
 
     /// <summary>
