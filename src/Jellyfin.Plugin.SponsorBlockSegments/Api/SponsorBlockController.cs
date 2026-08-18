@@ -24,6 +24,8 @@ public class SponsorBlockController : ControllerBase
     private readonly ILibraryManager _libraryManager;
     private readonly SponsorBlockSegmentProvider _provider;
     private readonly ChapterSegmentSource _chapters;
+    private readonly ApiSegmentSource _api;
+    private readonly VideoIdExtractor _videoIds;
     private readonly CategoryMap _categories;
     private readonly ScopeResolver _scope;
     private readonly SegmentCache _cache;
@@ -34,6 +36,8 @@ public class SponsorBlockController : ControllerBase
     /// <param name="libraryManager">Instance of the <see cref="ILibraryManager"/> interface.</param>
     /// <param name="provider">The segment provider.</param>
     /// <param name="chapters">The chapter source.</param>
+    /// <param name="api">The API source.</param>
+    /// <param name="videoIds">The video id extractor.</param>
     /// <param name="categories">The category mapping.</param>
     /// <param name="scope">The scope resolver.</param>
     /// <param name="cache">The API cache.</param>
@@ -41,6 +45,8 @@ public class SponsorBlockController : ControllerBase
         ILibraryManager libraryManager,
         SponsorBlockSegmentProvider provider,
         ChapterSegmentSource chapters,
+        ApiSegmentSource api,
+        VideoIdExtractor videoIds,
         CategoryMap categories,
         ScopeResolver scope,
         SegmentCache cache)
@@ -48,6 +54,8 @@ public class SponsorBlockController : ControllerBase
         _libraryManager = libraryManager;
         _provider = provider;
         _chapters = chapters;
+        _api = api;
+        _videoIds = videoIds;
         _categories = categories;
         _scope = scope;
         _cache = cache;
@@ -201,6 +209,52 @@ public class SponsorBlockController : ControllerBase
     }
 
     /// <summary>
+    /// The episodes of a series or season, for the preview picker.
+    /// </summary>
+    /// <param name="parentId">The series or season id.</param>
+    /// <returns>The episodes.</returns>
+    [HttpGet("Episodes")]
+    public ActionResult<IEnumerable<TreeNode>> GetEpisodes([FromQuery] Guid parentId)
+    {
+        var parent = _libraryManager.GetItemById(parentId);
+        if (parent is null)
+        {
+            return NotFound();
+        }
+
+        var nodes = _libraryManager.GetItemList(new InternalItemsQuery
+        {
+            IncludeItemTypes = new[] { BaseItemKind.Episode },
+            Recursive = true,
+            Parent = parent
+        })
+        .Select(e => new TreeNode
+        {
+            Id = e.Id.ToString(),
+            Name = Label(e)
+        })
+        .ToList();
+
+        return Ok(nodes);
+    }
+
+    private static string Label(BaseItem item)
+    {
+        if (item is MediaBrowser.Controller.Entities.TV.Episode ep
+            && ep.ParentIndexNumber.HasValue && ep.IndexNumber.HasValue)
+        {
+            return string.Format(
+                System.Globalization.CultureInfo.InvariantCulture,
+                "S{0:D2}E{1:D2} - {2}",
+                ep.ParentIndexNumber.Value,
+                ep.IndexNumber.Value,
+                ep.Name);
+        }
+
+        return item.Name;
+    }
+
+    /// <summary>
     /// Adds a library, series or season to the allowlist.
     /// </summary>
     /// <param name="itemId">The item.</param>
@@ -274,21 +328,37 @@ public class SponsorBlockController : ControllerBase
             return NotFound();
         }
 
-        // Deliberately reads the chapters directly rather than going through the provider,
-        // so the preview still shows what the mapping would do for an item that has not
-        // been opted in yet - which is the whole point of looking before committing.
-        var raw = _chapters.GetSegments(item);
+        // Deliberately resolves the sources directly rather than going through the
+        // provider, so the preview still works for an item that has not been opted in yet
+        // - which is the whole point of looking before committing. The order matches what
+        // the provider would do, so what is shown is what a scan would store.
+        var config = Plugin.Instance?.Configuration ?? new PluginConfiguration();
+        IReadOnlyList<Sources.RawSegment> raw = Array.Empty<Sources.RawSegment>();
+
+        if (config.SourceMode != SegmentSourceMode.ApiOnly)
+        {
+            raw = _chapters.GetSegments(item);
+        }
+
+        if (raw.Count == 0 && config.SourceMode != SegmentSourceMode.ChaptersOnly
+            && _videoIds.TryExtract(item.Path, config.VideoIdPattern, out var videoId))
+        {
+            raw = await _api.GetSegmentsAsync(videoId, cancellationToken).ConfigureAwait(false);
+        }
+
+        var minimumTicks = (long)(Math.Max(0, config.MinimumSegmentSeconds) * TimeSpan.TicksPerSecond);
 
         var rows = raw.Select(r => new PreviewRow
         {
             Start = TimeSpan.FromTicks(r.StartTicks).TotalSeconds,
             End = TimeSpan.FromTicks(r.EndTicks).TotalSeconds,
             Category = r.Category.ToString(),
-            SegmentType = _categories.TypeFor(r.Category)?.ToString() ?? "ignored",
+            SegmentType = r.EndTicks - r.StartTicks < minimumTicks
+                ? "skipped (too short)"
+                : _categories.TypeFor(r.Category)?.ToString() ?? "ignored",
             Origin = r.Origin.ToString()
         }).ToList();
 
-        await Task.CompletedTask.ConfigureAwait(false);
         return Ok(rows);
     }
 

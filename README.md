@@ -139,10 +139,39 @@ another provider's* option is only useful when deliberately running both.
 ## Configuration
 
 **Dashboard → Plugins → SponsorBlock Segments.** Pick the libraries, series or seasons to
-scan, set the category mapping, then run **Scheduled Tasks → Media Segment Scan**.
+scan, set the category mapping, then run a scan.
 
 The scan must follow a library scan, because the plugin reads chapters out of Jellyfin's
 database rather than off disk.
+
+### Preview
+
+The configuration page can show what a scan **would** store for a single episode: every
+marked range, the category it was read as, the segment type it maps to, and which source it
+came from. Rows that map to *Ignore*, or fall under the minimum length, are greyed and
+counted separately.
+
+It resolves sources in the same order the provider does, so what it shows is what a scan
+stores — and it works whether or not the item has been opted in, which is the point: check
+the mapping before committing to a scan.
+
+### Scanning
+
+Two ways:
+
+- **Scheduled Tasks → Scan SponsorBlock segments** — this plugin's own task. It walks only
+  what is in scope instead of every library, which matters when one opted-in series sits in
+  a large server. It has **no default trigger**; add one there if it should run on a
+  schedule.
+- **Scheduled Tasks → Media Segment Scan** — Jellyfin's own, which covers every library and
+  every provider.
+
+Both go through the same server pipeline, so each library's provider settings — which are
+enabled, and in what order — still decide what runs. A mapping change needs only a re-scan;
+the server rewrites a segment whose times or type differ. *Rebuild segments on every
+scheduled scan* is for clearing out segments left by an earlier configuration, and is off by
+default because the server's force path deletes **every** provider's segments for an item,
+not only this plugin's.
 
 ## Installation
 

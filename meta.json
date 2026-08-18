@@ -1,6 +1,6 @@
 {
   "category": "General",
-  "changelog": "First release. Reads the [SponsorBlock] chapters yt-dlp embeds and turns every one of them into a Jellyfin media segment, falling back to the SponsorBlock API for files that carry none. Categories are matched on the whole chapter label rather than by substring, which is what stops a Preview/Recap chapter being filed as an advert - every one of these chapters is prefixed \"[SponsorBlock]:\", so a pattern written to catch sponsors matches all of them. Each of the ten categories maps to a segment type of your choosing, or to nothing at all, and scanning is an allowlist: until a library, series or season is opted in, the plugin produces no segments anywhere.",
+  "changelog": "Adds a segment preview to the configuration page and a scheduled task of the plugin's own. The preview shows what a scan would store for one episode - each marked range, the category it was read as, the segment type it maps to and which source it came from - and works whether or not the item has been opted in, so a mapping can be checked before committing to a scan. The task scans only what is in scope rather than walking every library, and goes through the server's provider pipeline so each library's own provider settings still decide what runs and in what order. It has no default trigger; add one from Dashboard - Scheduled Tasks if it should run on a schedule.",
   "description": "Turns SponsorBlock data into Jellyfin media segments, so sponsors, intros, recaps and self-promotion get a skip button. Reads the [SponsorBlock] chapters yt-dlp embeds and falls back to the SponsorBlock API for files without them. Every segment in a file is emitted, each category maps to a segment type you choose, and nothing is scanned until you opt a library, series or season in.",
   "guid": "684a50b4-3970-44ef-aab0-3a162b415374",
   "imageUrl": "https://raw.githubusercontent.com/ch-bauer/jellyfin-plugin-sponsorblock-segments/main/images/icon.png",
@@ -8,8 +8,8 @@
   "overview": "Skip buttons for sponsors, intros and recaps in a YouTube library, from the SponsorBlock data already in your files.",
   "owner": "Christian",
   "targetAbi": "10.11.0.0",
-  "timestamp": "2026-08-18T23:00:00.000Z",
-  "version": "1.0.0.0",
+  "timestamp": "2026-08-18T23:45:00.000Z",
+  "version": "1.1.0.0",
   "status": "Active",
   "autoUpdate": false
 }

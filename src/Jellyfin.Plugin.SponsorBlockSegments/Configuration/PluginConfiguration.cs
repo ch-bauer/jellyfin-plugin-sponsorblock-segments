@@ -213,6 +213,18 @@ public class PluginConfiguration : BasePluginConfiguration
     public double MinimumSegmentSeconds { get; set; } = 1.0;
 
     /// <summary>
+    /// Make the plugin's own scheduled task rebuild segments even when nothing about them
+    /// has changed. Off by default: the server already rewrites a segment whose times or
+    /// type differ, so this is only needed to clear out segments left by an earlier
+    /// configuration.
+    /// </summary>
+    /// <remarks>
+    /// Note that the server's force path deletes every provider's segments for the item
+    /// before rebuilding, not only this plugin's.
+    /// </remarks>
+    public bool ForceOverwriteOnScan { get; set; }
+
+    /// <summary>
     /// The mapping table as shipped.
     /// </summary>
     /// <returns>One row per category.</returns>

@@ -2,6 +2,7 @@ using Jellyfin.Plugin.SponsorBlockSegments.Mapping;
 using Jellyfin.Plugin.SponsorBlockSegments.Providers;
 using Jellyfin.Plugin.SponsorBlockSegments.Scope;
 using Jellyfin.Plugin.SponsorBlockSegments.Sources;
+using Jellyfin.Plugin.SponsorBlockSegments.Tasks;
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.MediaSegments;
 using MediaBrowser.Controller.Plugins;
@@ -38,5 +39,9 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton<SponsorBlockSegmentProvider>();
         serviceCollection.AddSingleton<IMediaSegmentProvider>(
             sp => sp.GetRequiredService<SponsorBlockSegmentProvider>());
+
+        // The server discovers IScheduledTask across plugin assemblies itself; registering
+        // the type is what lets it be constructed with its dependencies.
+        serviceCollection.AddTransient<ScanSegmentsTask>();
     }
 }

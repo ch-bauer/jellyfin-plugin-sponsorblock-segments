@@ -79,6 +79,27 @@
                     <button is="emby-button" type="button" class="raised" id="AddSeason"><span>Add season</span></button>
                 </div>
 
+                <h3 style="margin-top:2em;">Preview</h3>
+                <div class="fieldDescription" style="margin-bottom:1em;">
+                    What a scan would store for one episode, using the current mapping and
+                    source order. Works whether or not the item is opted in, so you can check
+                    the mapping before committing to a scan.
+                </div>
+
+                <div class="selectContainer">
+                    <label class="selectLabel" for="EpisodePicker">Episode</label>
+                    <select is="emby-select" id="EpisodePicker" class="emby-select-withcolor emby-select"></select>
+                    <div class="fieldDescription">
+                        Filled from the series or season chosen above.
+                    </div>
+                </div>
+
+                <div style="margin-bottom:1em;">
+                    <button is="emby-button" type="button" class="raised" id="RunPreview"><span>Preview segments</span></button>
+                </div>
+
+                <div id="PreviewResult"></div>
+
                 <h3 style="margin-top:2em;">Category mapping</h3>
                 <div class="fieldDescription" style="margin-bottom:1em;">
                     What each SponsorBlock category becomes. Jellyfin has five segment types, so
@@ -146,6 +167,20 @@
                         Only useful when running alongside another segment provider rather than
                         instead of it. Segments are stored per provider, so both sets otherwise
                         coexist.
+                    </div>
+                </div>
+
+                <div class="checkboxContainer checkboxContainer-withDescription">
+                    <label>
+                        <input is="emby-checkbox" type="checkbox" id="ForceOverwriteOnScan" />
+                        <span>Rebuild segments on every scheduled scan</span>
+                    </label>
+                    <div class="fieldDescription checkboxFieldDescription">
+                        Off by default: a segment whose times or type changed is rewritten
+                        anyway, so this is only needed to clear out segments left by an earlier
+                        configuration. Note the server's force path deletes <em>every</em>
+                        provider's segments for the item before rebuilding, not only this
+                        plugin's.
                     </div>
                 </div>
 
@@ -246,6 +281,75 @@
                     }).join('');
             }
 
+            function loadEpisodes(parentId) {
+                api('Episodes?parentId=' + parentId).then(function (nodes) {
+                    fill(view().querySelector('#EpisodePicker'), nodes, '— pick an episode —');
+                });
+            }
+
+            function fmt(seconds) {
+                var s = Math.max(0, Math.round(seconds));
+                var m = Math.floor(s / 60);
+                return (m < 10 ? '0' : '') + m + ':' + (s % 60 < 10 ? '0' : '') + (s % 60);
+            }
+
+            function runPreview() {
+                var v = view();
+                var id = v.querySelector('#EpisodePicker').value;
+                var out = v.querySelector('#PreviewResult');
+                if (!id) {
+                    out.innerHTML = '<div class="fieldDescription"><em>Pick an episode first.</em></div>';
+                    return;
+                }
+
+                out.innerHTML = '<div class="fieldDescription">Reading…</div>';
+                api('Preview?itemId=' + id).then(function (rows) {
+                    if (!rows || !rows.length) {
+                        out.innerHTML = '<div class="fieldDescription"><em>No SponsorBlock data '
+                            + 'found for this episode — no marked chapters, and nothing from the '
+                            + 'API. A scan would store nothing.</em></div>';
+                        return;
+                    }
+
+                    var kept = rows.filter(function (r) {
+                        return r.SegmentType !== 'ignored'
+                            && r.SegmentType !== 'skipped (too short)';
+                    });
+
+                    var html = '<table style="width:100%;border-collapse:collapse;">'
+                        + '<tr style="text-align:left;opacity:0.7;">'
+                        + '<th style="padding:0.3em 0.6em 0.3em 0;">Start</th>'
+                        + '<th style="padding:0.3em 0.6em;">End</th>'
+                        + '<th style="padding:0.3em 0.6em;">Category</th>'
+                        + '<th style="padding:0.3em 0.6em;">Becomes</th>'
+                        + '<th style="padding:0.3em 0.6em;">Source</th></tr>';
+
+                    rows.forEach(function (r) {
+                        var dim = (r.SegmentType === 'ignored'
+                            || r.SegmentType === 'skipped (too short)') ? 'opacity:0.45;' : '';
+                        html += '<tr style="' + dim + '">'
+                            + '<td style="padding:0.2em 0.6em 0.2em 0;">' + fmt(r.Start) + '</td>'
+                            + '<td style="padding:0.2em 0.6em;">' + fmt(r.End) + '</td>'
+                            + '<td style="padding:0.2em 0.6em;">' + r.Category + '</td>'
+                            + '<td style="padding:0.2em 0.6em;"><strong>' + r.SegmentType + '</strong></td>'
+                            + '<td style="padding:0.2em 0.6em;">' + r.Origin + '</td>'
+                            + '</tr>';
+                    });
+
+                    html += '</table><div class="fieldDescription" style="margin-top:0.8em;">'
+                        + '<strong>' + kept.length + '</strong> segment'
+                        + (kept.length === 1 ? '' : 's') + ' would be stored, from '
+                        + rows.length + ' marked range' + (rows.length === 1 ? '' : 's')
+                        + '. Greyed rows are mapped to Ignore or fall under the minimum length.'
+                        + '</div>';
+
+                    out.innerHTML = html;
+                }, function () {
+                    out.innerHTML = '<div class="fieldDescription"><em>Could not read that '
+                        + 'episode.</em></div>';
+                });
+            }
+
             function loadLibraries() {
                 return api('Libraries').then(function (nodes) {
                     fill(view().querySelector('#LibraryPicker'), nodes, '— pick a library —');
@@ -264,6 +368,7 @@
                     v.querySelector('#ApiTimeoutSeconds').value = config.ApiTimeoutSeconds;
                     v.querySelector('#MinimumSegmentSeconds').value = config.MinimumSegmentSeconds;
                     v.querySelector('#SkipOverlappingExisting').checked = config.SkipOverlappingExisting;
+                    v.querySelector('#ForceOverwriteOnScan').checked = config.ForceOverwriteOnScan;
                     renderMappings(config);
                     renderScope(config);
                     loadLibraries();
@@ -284,6 +389,7 @@
                     config.ApiTimeoutSeconds = parseInt(v.querySelector('#ApiTimeoutSeconds').value, 10);
                     config.MinimumSegmentSeconds = parseFloat(v.querySelector('#MinimumSegmentSeconds').value);
                     config.SkipOverlappingExisting = v.querySelector('#SkipOverlappingExisting').checked;
+                    config.ForceOverwriteOnScan = v.querySelector('#ForceOverwriteOnScan').checked;
                     config.DefaultAction = v.querySelector('#DefaultAction').value;
                     config.Mappings = categories.map(function (c) {
                         return { Category: c[0], Action: v.querySelector('#Map_' + c[0]).value };
@@ -317,7 +423,14 @@
                         api('Seasons?seriesId=' + id).then(function (nodes) {
                             fill(v.querySelector('#SeasonPicker'), nodes, '— pick a season —');
                         });
+                        loadEpisodes(id);
                     });
+
+                    v.querySelector('#SeasonPicker').addEventListener('change', function () {
+                        if (this.value) { loadEpisodes(this.value); }
+                    });
+
+                    v.querySelector('#RunPreview').addEventListener('click', runPreview);
 
                     function add(pickerId, kind) {
                         var id = v.querySelector(pickerId).value;
