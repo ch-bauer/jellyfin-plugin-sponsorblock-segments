@@ -162,7 +162,7 @@ dotnet build src/Jellyfin.Plugin.SponsorBlockSegments/Jellyfin.Plugin.SponsorBlo
 dotnet test tests/Jellyfin.Plugin.SponsorBlockSegments.Tests/Jellyfin.Plugin.SponsorBlockSegments.Tests.csproj
 ```
 
-Targets `net9.0` against Jellyfin 10.11. `make_icon.py` regenerates the icon.
+Targets `net9.0` against Jellyfin 10.11.
 
 ## License
 
