@@ -3,6 +3,16 @@
   <h1>SponsorBlock Segments for Jellyfin (Proof of Concept)</h1>
 </div>
 
+> [!CAUTION]
+> **This is a proof of concept, written with AI.** It is purely for testing, and there are
+> many items that are known to be incorrect or broken. It is not advisable to use this on a
+> non-test server.
+>
+> For this reason it is offered as is, with **no guarantee of support, bug fixes, or
+> troubleshooting**.
+>
+> **It is NOT recommended to fork or build on top of this plugin!**
+
 Turns SponsorBlock data into real Jellyfin **media segments**, so sponsors, intros, recaps
 and self-promotion get a skip button — every one of them, in files that carry several.
 
