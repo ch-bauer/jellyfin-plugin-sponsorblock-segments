@@ -1,45 +1,72 @@
-# SponsorBlock Segments
+<div align="center">
+  <img src="images/icon.png" alt="SponsorBlock Segments for Jellyfin" width="128" />
+  <h1>SponsorBlock Segments for Jellyfin (Proof of Concept)</h1>
+</div>
 
-A Jellyfin media segment provider that turns SponsorBlock data into real, skippable
-segments — with per-series control over what gets scanned and a category mapping you
-choose.
+Turns SponsorBlock data into real Jellyfin **media segments**, so sponsors, intros, recaps
+and self-promotion get a skip button — every one of them, in files that carry several.
 
-## Why
+It reads the `[SponsorBlock]:` chapters yt-dlp embeds and falls back to the SponsorBlock
+API for files that have none. **Nothing is scanned until you opt a library, series or
+season in**, so installing it cannot put SponsorBlock segments on ordinary television, and
+it writes no segments of its own until you do.
 
-Existing options fall short on a YouTube-sourced library:
+## Why the existing plugins fall short here
 
-**Intro Skipper** reads `[SponsorBlock]:` chapters, but is built for broadcast television —
-one intro and one credits roll per episode. Verified in `ChapterAnalyzer.cs`:
+Both alternatives work well on what they were built for. Neither handles a YouTube video
+carrying seven interspersed sponsor reads.
+
+**[Intro Skipper](https://github.com/intro-skipper/intro-skipper)** already recognises these
+chapters — it has an *Enable SponsorBlock chapter detection* option, and
+`TryGetSponsorBlockChapterLabel` strips the exact `[SponsorBlock]:` prefix yt-dlp writes.
+But it is built for broadcast television: one intro and one credits roll per episode. From
+`IntroSkipper/Analyzers/ChapterAnalyzer.cs`:
 
 - `FindMatchingChapter` returns `Segment?` — **one segment per analysis mode per episode**.
-- A match whose neighbouring chapter matches the same mode is dropped
+  Seven chapters cannot become seven segments.
+- A match whose neighbouring chapter also matches the same mode is discarded outright
   (`LogIgnoringAdjacentMatch`).
-- `_ambiguousSponsorBlockChapterLabels` — including `intermission/intro animation` and
-  `preview/recap` — is unioned into **Commercial only**.
+- `_ambiguousSponsorBlockChapterLabels` — which holds `intermission/intro animation` and
+  `preview/recap` — is `.Union()`ed into the **Commercial** set *only*, so an intro and a
+  recap both come out labelled an advert.
 
-On a real file with seven SponsorBlock chapters it produced exactly **one** segment,
-`00:05.486 → 01:33.440`, typed Commercial: the Preview/Recap chapter, mistyped, with the
-Sponsor chapter before it suppressed as an adjacent match.
+On a real 44-minute file with seven SponsorBlock chapters it produced exactly **one**
+segment: `00:05.486 → 01:33.440`, typed Commercial. That is the Preview/Recap chapter,
+mistyped, with the `Sponsor` chapter before it suppressed as an adjacent match. The regex
+fields cannot rescue it either — they are anchored `(^|\s)(Intro|…)(\s|$)`, and in
+`Intermission/Intro Animation` the word is bounded by `/`.
 
-**Chapter Segments** emits every matching chapter, but classifies by loose substring regex,
-knows nothing of SponsorBlock categories, and offers no scope control. Its default
-commercial pattern contains a bare `ad`, which matches any chapter name containing those
-two letters.
+**[Chapter Segments](https://github.com/jellyfin/jellyfin-plugin-chapter-segments)** emits
+every matching chapter, which is the right shape, but classifies by loose substring regex
+and knows nothing of SponsorBlock categories. Its stock commercial pattern is
+`break|ad|advertisement|intermission|advert|commercial` — a bare `ad` matches any chapter
+name containing those two letters anywhere.
 
-This plugin emits **every** segment, matches on the **whole** category label, and scans
-only what you opt in.
+The trap either way: **every one of these chapters is prefixed `[SponsorBlock]:`**, so any
+pattern written to catch sponsors matches all of them. Add `sponsor` to a commercial regex
+and, because Commercial is tested before Preview and Recap, it swallows every other type.
 
-## Behaviour
+## How it works
 
-Categories are matched on the complete label after stripping the `[SponsorBlock]:` prefix —
-never by substring. That is the core fix: since every one of these chapters carries that
-prefix, any pattern written to catch sponsors matches all of them, which is how a recap
-ends up labelled an advert.
+An `IMediaSegmentProvider`, which is what puts it in each library's provider list and lets
+the server order it against the others.
 
-Default mapping, all editable:
+Categories are matched on the **whole label** after the prefix is stripped — never by
+substring. `Preview/Recap` resolves to the preview category because it *is* the preview
+category, and cannot be read as a sponsor. Every segment found is emitted; there is no
+one-per-mode cap and no adjacent-match suppression.
 
-| Category | Chapter label | Default |
-|---|---|---|
+Historical yt-dlp spellings are recognised too — `Music: Non-Music Section`,
+`Interaction Reminder (Subscribe)`, `Tangents/Jokes`, `Preview/Recap/Hook` — because a
+library built over several years carries chapters written by several yt-dlp versions.
+
+## Category mapping
+
+Jellyfin has five segment types, so several categories share one. Every row is editable,
+and *Ignore* produces no segment and leaves the chapter alone.
+
+| SponsorBlock category | Chapter label | Default |
+| --- | --- | --- |
 | `sponsor` | Sponsor | Commercial |
 | `selfpromo` | Unpaid/Self Promotion | Commercial |
 | `interaction` | Interaction Reminder | Commercial |
@@ -51,52 +78,82 @@ Default mapping, all editable:
 | `music_offtopic` | Non-Music Section | ignored |
 | `poi_highlight` | Highlight | ignored |
 
-Historical yt-dlp spellings (`Music: Non-Music Section`, `Interaction Reminder (Subscribe)`,
-`Tangents/Jokes`, `Preview/Recap/Hook`) are recognised too, since a library built over
-several years carries chapters from several yt-dlp versions.
+## Where segments come from
 
-## Sources
+**Embedded chapters** by default, which needs no network and is exactly what was written at
+download time.
 
-**Embedded chapters** (default) need no network. Jellyfin's `ChapterInfo` stores only a
-start position — there is no end time in the database — so each segment ends where the next
-chapter begins, and the last ends at the item runtime.
+> Jellyfin's `ChapterInfo` stores **only** a start position — there is no chapter end time
+> in the database. Each segment therefore ends where the next chapter begins, and the last
+> ends at the item runtime. This is why the filler chapters yt-dlp writes between marked
+> segments matter: they are what terminates the segment before them. Delete them and a
+> segment stretches to the start of the next marked one.
 
-> This is why the filler chapters yt-dlp writes between marked segments matter: they are
-> what terminates the segment before them. Deleting them stretches a segment to the start of
-> the next marked one.
+**The SponsorBlock API** is the fallback for files with no such chapters. It returns exact
+start *and* end times, so API-sourced segments do not depend on filler chapters. It needs a
+YouTube video id in the filename; the pattern is configurable and defaults to
+`\[([A-Za-z0-9_-]{11})\]`, matching yt-dlp's `… [dQw4w9WgXcQ].mkv`.
 
-**SponsorBlock API** is the fallback for files with no such chapters. It returns exact start
-and end times, so API-sourced segments do not depend on filler chapters. It needs a YouTube
-video id in the filename; the pattern is configurable and defaults to `\[([A-Za-z0-9_-]{11})\]`,
-matching yt-dlp's `… [dQw4w9WgXcQ].mkv`.
+Answers are cached, and **misses are cached for longer than hits** — in a YouTube library a
+large minority of videos have nothing submitted, and without negative caching every scan
+asks about all of them again, which is the slowest possible way to learn nothing.
 
-Answers are cached, misses for longer than hits — in a YouTube library a large minority of
-videos have nothing submitted, and without negative caching every scan asks about all of
-them again.
+The id is found by splitting on both path separators rather than
+`Path.GetFileName`, which honours only the running platform's. On Linux — where most
+servers run — a Windows-style path would otherwise be treated as one long file name, and a
+bracketed eleven-character string in any parent directory read as the video id.
 
-## Scope
+## What gets scanned
 
-An allowlist of libraries, series and seasons. With nothing selected the plugin produces no
-segments at all, so installing it cannot put SponsorBlock segments on ordinary television.
-A series covers all its seasons; add individual seasons to narrow it.
+An **allowlist** of libraries, series and seasons. With nothing selected the plugin
+produces no segments at all. A series covers every season of it; add individual seasons to
+narrow it.
 
-## Priority over other providers
+The check runs for every item a scan considers, so the entry set is held in memory and
+rebuilt only when the configuration object it was built from has been replaced — a save
+from the dashboard hands back a whole new object, which a cache keyed on anything else has
+no way of noticing.
 
-Nothing to configure in this plugin. Jellyfin handles it per library:
+## Priority against other providers
 
-*Libraries → (library) → Media Segment Providers* — enable, disable and order them there.
-`MediaSegmentManager` sorts by `LibraryOptions.MediaSegmentProviderOrder`, with unlisted
-providers last.
+Nothing to configure here. Jellyfin already handles it per library, under
+**Libraries → (library) → Media Segment Providers**, where providers are enabled, disabled
+and ordered. `MediaSegmentManager.RunSegmentPluginProviders` sorts by
+`LibraryOptions.MediaSegmentProviderOrder`, with unlisted providers last.
 
 Segments are stored **per provider**, so this plugin's and another's coexist rather than
-overwrite. To use this one instead of Intro Skipper, disable Intro Skipper for that library.
-The *Skip segments that overlap another provider's* option is only useful when deliberately
-running both.
+overwrite — ordering controls execution order, not precedence. **To use this instead of
+Intro Skipper, disable Intro Skipper for that library.** The *skip segments that overlap
+another provider's* option is only useful when deliberately running both.
 
 ## Configuration
 
-Dashboard → Plugins → SponsorBlock Segments. Pick libraries/series/seasons, set the category
-mapping, then run *Scheduled Tasks → Media Segment Scan*.
+**Dashboard → Plugins → SponsorBlock Segments.** Pick the libraries, series or seasons to
+scan, set the category mapping, then run **Scheduled Tasks → Media Segment Scan**.
+
+The scan must follow a library scan, because the plugin reads chapters out of Jellyfin's
+database rather than off disk.
+
+## Installation
+
+Add the repository in **Dashboard → Plugins → Repositories**:
+
+```
+https://raw.githubusercontent.com/ch-bauer/jellyfin-plugin-sponsorblock-segments/main/manifest.json
+```
+
+Then install **SponsorBlock Segments** from the catalogue and restart. Requires Jellyfin
+10.11.
+
+## No skip button appears
+
+- The **Media Segment Scan** has to run after the library scan, and after the plugin is
+  enabled for that library.
+- Skip buttons need **client-side** media segment support. Jellyfin Web has it; some
+  clients do not yet, and will show nothing even though the segments exist server-side.
+- Check the item is actually in scope — an empty allowlist produces nothing, by design.
+- If another provider is also enabled for the library, you may be looking at its segments
+  rather than these.
 
 ## Building
 
@@ -105,4 +162,8 @@ dotnet build src/Jellyfin.Plugin.SponsorBlockSegments/Jellyfin.Plugin.SponsorBlo
 dotnet test tests/Jellyfin.Plugin.SponsorBlockSegments.Tests/Jellyfin.Plugin.SponsorBlockSegments.Tests.csproj
 ```
 
-Targets `net9.0` against Jellyfin 10.11.
+Targets `net9.0` against Jellyfin 10.11. `make_icon.py` regenerates the icon.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
