@@ -13,7 +13,7 @@
         "changelog": "Changes the defaults only; an existing installation keeps its saved settings. Segments are now read from embedded chapters alone rather than falling back to the SponsorBlock API, so a fresh install makes no network requests at all - the API fallback is still there under 'Where segments come from'. Three category mappings changed: Unpaid/Self Promotion and Interaction Reminder now map to Recap instead of Commercial, and Preview/Recap maps to Preview instead of Recap.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/ch-bauer/jellyfin-plugin-sponsorblock-segments/releases/download/v1.1.1.0/sponsorblock-segments_1.1.1.0.zip",
-        "checksum": "PENDING",
+        "checksum": "be650b14cb462bbe48c9355f17f7aca8",
         "timestamp": "2026-08-19T00:15:00.000Z"
       },
       {
