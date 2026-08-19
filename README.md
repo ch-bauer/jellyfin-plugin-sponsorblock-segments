@@ -16,10 +16,10 @@
 Turns SponsorBlock data into real Jellyfin **media segments**, so sponsors, intros, recaps
 and self-promotion get a skip button — every one of them, in files that carry several.
 
-It reads the `[SponsorBlock]:` chapters yt-dlp embeds and falls back to the SponsorBlock
-API for files that have none. **Nothing is scanned until you opt a library, series or
-season in**, so installing it cannot put SponsorBlock segments on ordinary television, and
-it writes no segments of its own until you do.
+It reads the `[SponsorBlock]:` chapters yt-dlp embeds, with the SponsorBlock API available
+as an optional fallback for files that have none. **Nothing is scanned until you opt a
+library, series or season in**, so installing it cannot put SponsorBlock segments on
+ordinary television, and it writes no segments of its own until you do.
 
 ## Why the existing plugins fall short here
 
