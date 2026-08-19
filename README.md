@@ -78,20 +78,21 @@ and *Ignore* produces no segment and leaves the chapter alone.
 | SponsorBlock category | Chapter label | Default |
 | --- | --- | --- |
 | `sponsor` | Sponsor | Commercial |
-| `selfpromo` | Unpaid/Self Promotion | Commercial |
-| `interaction` | Interaction Reminder | Commercial |
+| `selfpromo` | Unpaid/Self Promotion | Recap |
+| `interaction` | Interaction Reminder | Recap |
 | `intro` | Intermission/Intro Animation | Intro |
 | `hook` | Hook/Greetings | Intro |
 | `outro` | Endcards/Credits | Outro |
-| `preview` | Preview/Recap | Recap |
+| `preview` | Preview/Recap | Preview |
 | `filler` | Filler Tangent | ignored |
 | `music_offtopic` | Non-Music Section | ignored |
 | `poi_highlight` | Highlight | ignored |
 
 ## Where segments come from
 
-**Embedded chapters** by default, which needs no network and is exactly what was written at
-download time.
+**Embedded chapters only** by default, which needs no network at all and is exactly what was
+written at download time. Switch to *Embedded chapters, API as fallback* if files without
+chapters should be looked up online.
 
 > Jellyfin's `ChapterInfo` stores **only** a start position — there is no chapter end time
 > in the database. Each segment therefore ends where the next chapter begins, and the last
@@ -99,7 +100,8 @@ download time.
 > segments matter: they are what terminates the segment before them. Delete them and a
 > segment stretches to the start of the next marked one.
 
-**The SponsorBlock API** is the fallback for files with no such chapters. It returns exact
+**The SponsorBlock API** is available as a fallback for files with no such chapters, but is
+off by default. It returns exact
 start *and* end times, so API-sourced segments do not depend on filler chapters. It needs a
 YouTube video id in the filename; the pattern is configurable and defaults to
 `\[([A-Za-z0-9_-]{11})\]`, matching yt-dlp's `… [dQw4w9WgXcQ].mkv`.

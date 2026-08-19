@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/ch-bauer/jellyfin-plugin-sponsorblock-segments/main/images/icon.png",
     "versions": [
       {
+        "version": "1.1.1.0",
+        "changelog": "Changes the defaults only; an existing installation keeps its saved settings. Segments are now read from embedded chapters alone rather than falling back to the SponsorBlock API, so a fresh install makes no network requests at all - the API fallback is still there under 'Where segments come from'. Three category mappings changed: Unpaid/Self Promotion and Interaction Reminder now map to Recap instead of Commercial, and Preview/Recap maps to Preview instead of Recap.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/ch-bauer/jellyfin-plugin-sponsorblock-segments/releases/download/v1.1.1.0/sponsorblock-segments_1.1.1.0.zip",
+        "checksum": "PENDING",
+        "timestamp": "2026-08-19T00:15:00.000Z"
+      },
+      {
         "version": "1.1.0.0",
         "changelog": "Adds a segment preview to the configuration page and a scheduled task of the plugin's own. The preview shows what a scan would store for one episode - each marked range, the category it was read as, the segment type it maps to and which source it came from - and works whether or not the item has been opted in, so a mapping can be checked before committing to a scan. The task scans only what is in scope rather than walking every library, and goes through the server's provider pipeline so each library's own provider settings still decide what runs and in what order. It has no default trigger; add one from Dashboard - Scheduled Tasks if it should run on a schedule.",
         "targetAbi": "10.11.0.0",

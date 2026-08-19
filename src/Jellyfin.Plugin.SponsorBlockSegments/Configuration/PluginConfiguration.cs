@@ -146,7 +146,7 @@ public class PluginConfiguration : BasePluginConfiguration
     /// <summary>
     /// Where segments are read from.
     /// </summary>
-    public SegmentSourceMode SourceMode { get; set; } = SegmentSourceMode.ChaptersThenApi;
+    public SegmentSourceMode SourceMode { get; set; } = SegmentSourceMode.ChaptersOnly;
 
     /// <summary>
     /// The libraries, series and seasons that are scanned. This is an allowlist: with it
@@ -231,12 +231,12 @@ public class PluginConfiguration : BasePluginConfiguration
     public static Collection<CategoryMapping> Defaults() => new()
     {
         new CategoryMapping { Category = SponsorBlockCategory.Sponsor, Action = SegmentAction.Commercial },
-        new CategoryMapping { Category = SponsorBlockCategory.SelfPromo, Action = SegmentAction.Commercial },
-        new CategoryMapping { Category = SponsorBlockCategory.Interaction, Action = SegmentAction.Commercial },
+        new CategoryMapping { Category = SponsorBlockCategory.SelfPromo, Action = SegmentAction.Recap },
+        new CategoryMapping { Category = SponsorBlockCategory.Interaction, Action = SegmentAction.Recap },
         new CategoryMapping { Category = SponsorBlockCategory.Intro, Action = SegmentAction.Intro },
         new CategoryMapping { Category = SponsorBlockCategory.Hook, Action = SegmentAction.Intro },
         new CategoryMapping { Category = SponsorBlockCategory.Outro, Action = SegmentAction.Outro },
-        new CategoryMapping { Category = SponsorBlockCategory.Preview, Action = SegmentAction.Recap },
+        new CategoryMapping { Category = SponsorBlockCategory.Preview, Action = SegmentAction.Preview },
         new CategoryMapping { Category = SponsorBlockCategory.Filler, Action = SegmentAction.Ignore },
         new CategoryMapping { Category = SponsorBlockCategory.MusicOffTopic, Action = SegmentAction.Ignore },
         new CategoryMapping { Category = SponsorBlockCategory.PoiHighlight, Action = SegmentAction.Ignore }
