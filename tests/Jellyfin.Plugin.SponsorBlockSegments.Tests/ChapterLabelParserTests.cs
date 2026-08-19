@@ -81,4 +81,52 @@ public class ChapterLabelParserTests
         Assert.True(ChapterLabelParser.TryParseChapter(chapter, out var category));
         Assert.Equal(expected, category);
     }
+
+    // yt-dlp merges two overlapping SponsorBlock segments into one chapter and joins the
+    // labels with a comma. Every case below was taken from a real library scan; before
+    // the split they all fell through to the default action and produced no segment.
+    [Theory]
+    [InlineData("[SponsorBlock]: Sponsor, Intermission/Intro Animation", SponsorBlockCategory.Sponsor)]
+    [InlineData("[SponsorBlock]: Intermission/Intro Animation, Sponsor", SponsorBlockCategory.Intro)]
+    [InlineData("[SponsorBlock]: Sponsor, Preview/Recap", SponsorBlockCategory.Sponsor)]
+    [InlineData("[SponsorBlock]: Preview/Recap, Highlight", SponsorBlockCategory.Preview)]
+    [InlineData("[SponsorBlock]: Preview/Recap, Intermission/Intro Animation", SponsorBlockCategory.Preview)]
+    [InlineData("[SponsorBlock]: Hook/Greetings, Intermission/Intro Animation", SponsorBlockCategory.Hook)]
+    [InlineData("[SponsorBlock]: Unpaid/Self Promotion, Sponsor", SponsorBlockCategory.SelfPromo)]
+    public void A_merged_chapter_takes_the_first_recognised_label(string chapter, SponsorBlockCategory expected)
+    {
+        Assert.True(ChapterLabelParser.TryParseChapter(chapter, out var category));
+        Assert.Equal(expected, category);
+    }
+
+    [Fact]
+    public void An_unrecognised_leading_part_does_not_stop_the_rest_being_read()
+    {
+        Assert.True(ChapterLabelParser.TryParseChapter("[SponsorBlock]: Something New, Sponsor", out var category));
+        Assert.Equal(SponsorBlockCategory.Sponsor, category);
+    }
+
+    [Fact]
+    public void A_compound_of_nothing_known_is_still_rejected()
+    {
+        Assert.False(ChapterLabelParser.TryParseChapter("[SponsorBlock]: Something New, Another Thing", out _));
+    }
+
+    // The whole-label lookup has to run before the split, or a label that legitimately
+    // held a comma would be read as a compound of its own fragments.
+    [Fact]
+    public void The_whole_label_is_matched_before_any_splitting()
+    {
+        Assert.True(ChapterLabelParser.TryParseChapter("[SponsorBlock]: Music: Non-Music Section", out var category));
+        Assert.Equal(SponsorBlockCategory.MusicOffTopic, category);
+    }
+
+    // The reason this class does not use substring matching: every chapter carries the
+    // prefix, so a "sponsor" substring test matches all of them. Splitting must not
+    // reintroduce that.
+    [Fact]
+    public void Splitting_does_not_let_the_prefix_be_read_as_a_category()
+    {
+        Assert.False(ChapterLabelParser.TryParseLabel("[SponsorBlock], Nonsense", out _));
+    }
 }

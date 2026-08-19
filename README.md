@@ -66,6 +66,11 @@ substring. `Preview/Recap` resolves to the preview category because it *is* the 
 category, and cannot be read as a sponsor. Every segment found is emitted; there is no
 one-per-mode cap and no adjacent-match suppression.
 
+Where two segments overlap, yt-dlp writes them as **one** chapter with both labels joined
+by a comma — `Sponsor, Intermission/Intro Animation`. A chapter is a single time range, so
+it becomes a single segment, typed from the first label that resolves; the whole label is
+always tried first, so this splitting never runs on a label that matched outright.
+
 Historical yt-dlp spellings are recognised too — `Music: Non-Music Section`,
 `Interaction Reminder (Subscribe)`, `Tangents/Jokes`, `Preview/Recap/Hook` — because a
 library built over several years carries chapters written by several yt-dlp versions.

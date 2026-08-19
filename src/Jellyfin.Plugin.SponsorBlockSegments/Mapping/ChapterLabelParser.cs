@@ -106,6 +106,15 @@ public static class ChapterLabelParser
     /// <summary>
     /// Reads a category from a bare label or API category name, with no prefix.
     /// </summary>
+    /// <remarks>
+    /// Where two SponsorBlock segments overlap, yt-dlp writes them as a single chapter
+    /// whose label joins both with a comma - "Sponsor, Intermission/Intro Animation".
+    /// The chapter is one time range, so it can only become one segment; the first
+    /// recognised part wins, which is the one that starts earlier because yt-dlp joins
+    /// them in start order. The whole label is still tried first, so a compound is only
+    /// ever split after exact matching has failed, and no label in the table contains a
+    /// comma for the split to damage.
+    /// </remarks>
     /// <param name="label">The label, for example <c>Preview/Recap</c> or <c>selfpromo</c>.</param>
     /// <param name="category">The category, when recognised.</param>
     /// <returns>Whether a category was recognised.</returns>
@@ -124,6 +133,21 @@ public static class ChapterLabelParser
         {
             category = found;
             return true;
+        }
+
+        if (label.IndexOf(',', StringComparison.Ordinal) < 0)
+        {
+            return false;
+        }
+
+        foreach (var part in label.Split(','))
+        {
+            var trimmed = part.Trim();
+            if (trimmed.Length > 0 && _labels.TryGetValue(trimmed, out var one))
+            {
+                category = one;
+                return true;
+            }
         }
 
         return false;

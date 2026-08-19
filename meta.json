@@ -1,6 +1,6 @@
 {
   "category": "General",
-  "changelog": "Changes the defaults only; an existing installation keeps its saved settings. Segments are now read from embedded chapters alone rather than falling back to the SponsorBlock API, so a fresh install makes no network requests at all - the API fallback is still there under 'Where segments come from'. Three category mappings changed: Unpaid/Self Promotion and Interaction Reminder now map to Recap instead of Commercial, and Preview/Recap maps to Preview instead of Recap.",
+  "changelog": "Reads the merged chapters yt-dlp writes where two SponsorBlock segments overlap. Their labels are joined with a comma - \"Sponsor, Intermission/Intro Animation\" - which matched no known label, so the chapter fell through to the default action and produced no segment at all. The whole label is still matched first and the first recognised part only wins after that fails, so the exact matching that keeps a Preview/Recap chapter from being read as a sponsor is unchanged.",
   "description": "Turns SponsorBlock data into Jellyfin media segments, so sponsors, intros, recaps and self-promotion get a skip button. Reads the [SponsorBlock] chapters yt-dlp embeds and falls back to the SponsorBlock API for files without them. Every segment in a file is emitted, each category maps to a segment type you choose, and nothing is scanned until you opt a library, series or season in.",
   "guid": "684a50b4-3970-44ef-aab0-3a162b415374",
   "imageUrl": "https://raw.githubusercontent.com/ch-bauer/jellyfin-plugin-sponsorblock-segments/main/images/icon.png",
@@ -8,8 +8,8 @@
   "overview": "Skip buttons for sponsors, intros and recaps in a YouTube library, from the SponsorBlock data already in your files.",
   "owner": "Christian",
   "targetAbi": "10.11.0.0",
-  "timestamp": "2026-08-19T00:15:00.000Z",
-  "version": "1.1.1.0",
+  "timestamp": "2026-08-19T01:00:00.000Z",
+  "version": "1.1.2.0",
   "status": "Active",
   "autoUpdate": false
 }
